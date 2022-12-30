@@ -1,0 +1,39 @@
+name: 'cosign-action'
+
+description: 'Simplified action to sign container images using cosign'
+
+branding:
+  icon: 'package'
+  color: 'blue'
+
+inputs:
+  # Keyless signing requires the 'id-token: write' GITHUB_TOKEN permission
+  cosign-keyless:
+    description: '(EXPERIMENTAL): Uses the OIDC token from Github as the signing key'
+    required: false
+    type: boolean
+    default: false
+  cosign-flags:
+    description: 'Optional flags to pass to cosign sign'
+    required: false
+    type: string
+  tags:
+    description: 'Tags to sign'
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - uses: sigstore/cosign-installer@v2.8.1
+
+    - shell: bash
+      env:
+        COSIGN_EXPERIMENTAL: "${{ inputs.cosign-keyless == 'true' && 'true' || 'false' }}"
+        TAGS: "${{ inputs.tags }}"
+      run: |
+        cosign \
+          sign \
+          ${{ inputs.cosign-keyless == 'false' && '--key env://COSIGN_PRIVATE_KEY' || '' }} \
+          ${{ inputs.cosign-flags != '' && inputs.cosign-flags || '' }} \
+          ${TAGS} \

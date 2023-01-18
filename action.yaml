@@ -27,6 +27,25 @@ runs:
   steps:
     - uses: sigstore/cosign-installer@v2.8.1
 
+    - uses: imjasonh/setup-crane@v0.2
+
+    - name: Fetch image digest
+      shell: bash
+      env:
+        TAGS: "${{ inputs.tags }}"
+      run: |
+        set -x
+
+        digests=""
+        for tag in ${TAGS}
+        do
+          _image=${tag%:*}
+          [[ ${tag} = *@sha256* ]] \
+            && digests+=" ${tag}" \
+            || digests+=" ${_image}@$(crane digest ${tag})"
+        done
+        echo "IMAGES=${digests}" >> $GITHUB_ENV
+
     - shell: bash
       env:
         COSIGN_EXPERIMENTAL: "${{ inputs.cosign-keyless == 'true' && 'true' || 'false' }}"
@@ -36,4 +55,4 @@ runs:
           sign \
           ${{ inputs.cosign-keyless == 'false' && '--key env://COSIGN_PRIVATE_KEY' || '' }} \
           ${{ inputs.cosign-flags != '' && inputs.cosign-flags || '' }} \
-          ${TAGS} \
+          ${{ env.IMAGES }}
